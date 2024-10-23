@@ -120,9 +120,7 @@ runs:
         # Check if the gh-pages branch exists
         if [ $(gh api "/repos/${GITHUB_REPOSITORY}/branches/gh-pages" > /dev/null 2>&1; echo $?) -eq 1 ]; then
           git checkout --orphan gh-pages
-          rm -rf *
-          rm -rf .github
-          git add .
+          git rm -rf .
           git commit --allow-empty -m "Initialize gh-pages branch"
         else
           git fetch origin gh-pages
