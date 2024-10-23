@@ -21,3 +21,4 @@ jobs:
           version: ${{ github.ref_name }}
           docs-dir: 'docs'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          force-orphan: true
