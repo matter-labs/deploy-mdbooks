@@ -114,6 +114,9 @@ runs:
         MDBOOK_DEST_DIR: ${{ steps.build-book.outputs.destination_dir }}
       run: |
         echo "::group::Deploying the book"
+        # Configure git
+        git config user.name "Deploy from CI"
+        git config user.email ""
         # Check if the gh-pages branch exists
         if [ $(gh api "/repos/${GITHUB_REPOSITORY}/branches/gh-pages" > /dev/null 2>&1; echo $?) -eq 1 ]; then
           git checkout --orphan gh-pages
@@ -127,8 +130,6 @@ runs:
         # Move the new version of the book
         mv "${{ inputs.docs-dir }}/${{ inputs.books-outdir }}/${MDBOOK_DEST_DIR}" "${MDBOOK_DEST_DIR}"
         # Add the new version of the book
-        git config user.name "Deploy from CI"
-        git config user.email ""
         git add "${MDBOOK_DEST_DIR}"
         git commit --amend -m "Deploy ${GITHUB_SHA} to gh-pages"
         git push --force --set-upstream origin gh-pages
