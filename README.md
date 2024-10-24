@@ -41,7 +41,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy
-        uses: matter-labs/deploy-mdbooks/@v1
+        uses: matter-labs/deploy-mdbooks@v1
         with:
           version: ${{ inputs.version || github.ref_name }}
           docs-dir: ${{ inputs.docs-dir || 'docs' }}
@@ -96,7 +96,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy
-        uses: matter-labs/deploy-mdbooks/@v1
+        uses: matter-labs/deploy-mdbooks@v1
         with:
           version: ${{ inputs.version || github.ref_name }}
           docs-dir: ${{ inputs.docs-dir || 'docs' }}
@@ -115,7 +115,8 @@ jobs:
 | `docs-dir`         | `string`  | ❌        | `docs`        | The directory containing the mdBook source files.                           |
 | `mdbook-version`   | `string`  | ❌        | `latest`      | The version of mdBook to use. Default is the latest release.                |
 | `enable-tests`     | `boolean` | ❌        | `true`        | Enable or disable `mdbook test`.                                            |
-| `force-orphan`     | `boolean` | ❌        | `false`       | Force `gh-pages` branch to be orphan (do not keep history of commits).                                            |
+| `force-orphan`     | `boolean` | ❌        | `false`       | Force `gh-pages` branch to be orphan (do not keep history of commits).      |
+| `publish-branch`   | `string`  | ❌        | `gh-pages`    | The branch to publish documenation to.                                      |
 
 ## Outputs
 
