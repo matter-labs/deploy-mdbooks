@@ -38,6 +38,11 @@ inputs:
     description: "Force gh-pages branch to be orphan"
     required: false
     default: false
+  publish-branch:
+    type: string
+    description: "Branch to publish the documentation"
+    required: false
+    default: "gh-pages"
 
 runs:
   using: composite
@@ -102,7 +107,7 @@ runs:
         github_token: ${{ inputs.github-token }}
         publish_dir: ${{ inputs.docs-dir }}/${{ inputs.books-outdir }}/${{ steps.build-book.outputs.destination_dir }}
         destination_dir: ${{ steps.build-book.outputs.destination_dir }}
-        publish_branch: gh-pages
+        publish_branch: ${{ inputs.publish-branch }}
         keep_files: true # to allow deployment of multiple versions
         force_orphan: ${{ inputs.force-orphan }}
 
@@ -117,14 +122,14 @@ runs:
         # Configure git
         git config user.name "Deploy from CI"
         git config user.email ""
-        # Check if the gh-pages branch exists
-        if [ $(gh api "/repos/${GITHUB_REPOSITORY}/branches/gh-pages" > /dev/null 2>&1; echo $?) -eq 1 ]; then
-          git checkout --orphan gh-pages
+        # Check if the deploy branch exists
+        if [ $(gh api "/repos/${GITHUB_REPOSITORY}/branches/${{ inputs.publish-branch }}" > /dev/null 2>&1; echo $?) -eq 1 ]; then
+          git checkout --orphan ${{ inputs.publish-branch }}
           git rm -rf .
-          git commit --allow-empty -m "Initialize gh-pages branch"
+          git commit --allow-empty -m "Initialize ${{ inputs.publish-branch }} branch"
         else
-          git fetch origin gh-pages
-          git checkout gh-pages
+          git fetch origin ${{ inputs.publish-branch }}
+          git checkout ${{ inputs.publish-branch }}
         fi
         # Remove the previous version of the book
         rm -rf ${MDBOOK_DEST_DIR}
@@ -132,6 +137,6 @@ runs:
         mv "${{ inputs.docs-dir }}/${{ inputs.books-outdir }}/${MDBOOK_DEST_DIR}" "${MDBOOK_DEST_DIR}"
         # Add the new version of the book
         git add "${MDBOOK_DEST_DIR}"
-        git commit --amend -m "Deploy ${GITHUB_SHA} to gh-pages"
-        git push --force --set-upstream origin gh-pages
+        git commit --amend -m "Deploy ${GITHUB_SHA::7}"
+        git push --force --set-upstream origin ${{ inputs.publish-branch }}
         echo "::endgroup::"
