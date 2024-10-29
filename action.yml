@@ -28,21 +28,16 @@ inputs:
     description: "Disable mdbook tests"
     required: false
     default: true
-  books-outdir:
-    type: string
-    description: "Directory to store the built books"
-    required: false
-    default: "mdbooks"
-  force-orphan:
-    type: boolean
-    description: "Force gh-pages branch to be orphan"
-    required: false
-    default: false
   publish-branch:
     type: string
     description: "Branch to publish the documentation"
     required: false
     default: "gh-pages"
+  project:
+    type: string
+    description: "Name of the project to deploy"
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -50,13 +45,13 @@ runs:
 
     - name: Check runner OS
       if: runner.os != 'Linux'
-      shell: bash
+      shell: 'bash -ex {0}'
       run: |
         echo "::error title=⛔ error hint::Only Linux is supported for this action."
         exit 1
 
     - name: Install latest mdbook
-      shell: bash
+      shell: 'bash -ex {0}'
       env:
         MDBOOK_LATEST_API: "https://api.github.com/repos/rust-lang/mdbook/releases/${{ inputs.mdbook-version || 'latest' }}"
         MDBOOK_DOWNLOAD_URL: "https://github.com/rust-lang/mdbook/releases/download"
@@ -71,54 +66,35 @@ runs:
         echo "::endgroup::"
 
     - name: Build Book
-      shell: bash
+      shell: 'bash -ex {0}'
       working-directory: ${{ inputs.docs-dir }}
       id: build-book
       run: |
         echo "::group::Building the book"
         if [ ${{ inputs.version }} == ${{ github.event.repository.default_branch }} ] || [ ${{ inputs.version }} == 'latest' ]; then
-          DEST_DIR=latest
+          VERSION=latest
         else
-          DEST_DIR=${{ inputs.version }}
+          VERSION=${{ inputs.version }}
         fi
-        echo destination_dir=${DEST_DIR} >> "${GITHUB_OUTPUT}"
-        mdbook build --dest-dir=${{ inputs.books-outdir }}/${DEST_DIR}
+        mdbook build --dest-dir=${VERSION}
+        echo version=${VERSION} >> "${GITHUB_OUTPUT}"
         echo "::endgroup::"
 
     - name: Test Book
       if: inputs.enable-tests
-      shell: bash
+      shell: 'bash -ex {0}'
       working-directory: ${{ inputs.docs-dir }}
       run: |
         echo "::group::Testing the book"
         mdbook test
         echo "::endgroup::"
 
-    # Widely used GitHub action to deploy to gh-pages
-    # it does not support deployment of multiple versions yet
-    # as it is not possible to keep files and make the branch orphan yet:
-    # https://github.com/peaceiris/actions-gh-pages/issues/455
-    # Although it can be used if only the latest version is deployed
-    # or if the gh-pages branch history is required
-    - name: Deploy Book
-      if: ${{ !inputs.force-orphan }}
-      uses: peaceiris/actions-gh-pages@v4
-      with:
-        github_token: ${{ inputs.github-token }}
-        publish_dir: ${{ inputs.docs-dir }}/${{ inputs.books-outdir }}/${{ steps.build-book.outputs.destination_dir }}
-        destination_dir: ${{ steps.build-book.outputs.destination_dir }}
-        publish_branch: ${{ inputs.publish-branch }}
-        keep_files: true # to allow deployment of multiple versions
-        force_orphan: ${{ inputs.force-orphan }}
-
-    - name: Deploy book
-      if: ${{ inputs.force-orphan }}
-      shell: bash
+    - name: Init publishing branch
+      shell: 'bash -ex {0}'
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-        MDBOOK_DEST_DIR: ${{ steps.build-book.outputs.destination_dir }}
       run: |
-        echo "::group::Deploying the book"
+        echo "::group::Initizalizing or updating publishing branch"
         # Configure git
         git config user.name "Deploy from CI"
         git config user.email ""
@@ -131,12 +107,53 @@ runs:
           git fetch origin ${{ inputs.publish-branch }}
           git checkout ${{ inputs.publish-branch }}
         fi
+        echo "::endgroup::"
+
+    - name: Update versions file
+      shell: 'bash -ex {0}'
+      env:
+        VERSION: ${{ steps.build-book.outputs.version }}
+      run: |
+        echo "::group::Updating versions file"
+        if [ ! -z "${{ inputs.project }}" ]; then
+          mkdir -p "${{ inputs.project }}"
+          cd "${{ inputs.project }}"
+        fi
+        JSON_FILE="versions.json"
+        # Check if the JSON file exists
+        if [ ! -f "${JSON_FILE}" ]; then
+          echo "${JSON_FILE} not found, creating..."
+          echo "{}" > "${JSON_FILE}"
+        fi
+        # Read the current JSON content
+        CURRENT_JSON=$(<"$JSON_FILE")
+        # Check if the new version already exists
+        if echo "${CURRENT_JSON}" | grep -q "\"${VERSION}\":"; then
+          echo "Updating docs for the existing version ${VERSION} in ${JSON_FILE}."
+          exit 0
+        fi
+        # Use jq to update the JSON file
+        UPDATED_JSON=$(echo "${CURRENT_JSON}" | jq --arg version "${VERSION}" --arg url "/${VERSION}" '. + {($version): $url}')
+        # Write the updated JSON back to the file
+        echo "${UPDATED_JSON}" > "${JSON_FILE}"
+        echo "Version ${VERSION} added successfully to ${JSON_FILE}."
+        cat "${JSON_FILE}"
+        echo "::endgroup::"
+
+    - name: Deploy book
+      shell: 'bash -ex {0}'
+      env:
+        VERSION: ${{ steps.build-book.outputs.version }}
+      run: |
+        echo "::group::Deploying the book"
+        BOOK_DIR=$(readlink -f "${{ inputs.docs-dir }}/${VERSION}")
+        [ ! -z "${{ inputs.project }}" ] && cd "${{ inputs.project }}"
         # Remove the previous version of the book
-        rm -rf ${MDBOOK_DEST_DIR}
+        rm -rf ${VERSION}
         # Move the new version of the book
-        mv "${{ inputs.docs-dir }}/${{ inputs.books-outdir }}/${MDBOOK_DEST_DIR}" "${MDBOOK_DEST_DIR}"
+        mv "${BOOK_DIR}" "${VERSION}"
         # Add the new version of the book
-        git add "${MDBOOK_DEST_DIR}"
+        git add "${VERSION}" versions.json
         git commit --amend -m "Deploy ${GITHUB_SHA::7}"
         git push --force --set-upstream origin ${{ inputs.publish-branch }}
         echo "::endgroup::"
