@@ -101,22 +101,21 @@ jobs:
           version: ${{ inputs.version || github.ref_name }}
           docs-dir: ${{ inputs.docs-dir || 'docs' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          force-orphan: true
           enable-tests: true
           mdbook-version: "v0.4.40"
 ```
 
 ## Inputs
 
-| Name               | Type      | Required | Default       | Description                                                                 |
-|--------------------|-----------|----------|---------------|-----------------------------------------------------------------------------|
-| `github-token`     | `string`  | ✅        | N/A           | GitHub token used to authenticate and push to `gh-pages` branch.            |
-| `version`          | `string`  | ❌        | `latest`      | The version of the documentation to deploy. Defaults to "latest".           |
-| `docs-dir`         | `string`  | ❌        | `docs`        | The directory containing the mdBook source files.                           |
-| `mdbook-version`   | `string`  | ❌        | `latest`      | The version of mdBook to use. Default is the latest release.                |
-| `enable-tests`     | `boolean` | ❌        | `true`        | Enable or disable `mdbook test`.                                            |
-| `force-orphan`     | `boolean` | ❌        | `false`       | Force `gh-pages` branch to be orphan (do not keep history of commits).      |
-| `publish-branch`   | `string`  | ❌        | `gh-pages`    | The branch to publish documenation to.                                      |
+| Name               | Type      | Required | Default       | Description                                                                     |
+|--------------------|-----------|----------|---------------|---------------------------------------------------------------------------------|
+| `github-token`     | `string`  | ✅        | N/A           | GitHub token used to authenticate and push to `gh-pages` branch.               |
+| `version`          | `string`  | ❌        | `latest`      | The version of the documentation to deploy. Defaults to "latest".              |
+| `docs-dir`         | `string`  | ❌        | `docs`        | The directory containing the mdBook source files.                              |
+| `mdbook-version`   | `string`  | ❌        | `latest`      | The version of mdBook to use. Default is the latest release.                   |
+| `enable-tests`     | `boolean` | ❌        | `true`        | Enable or disable `mdbook test`.                                               |
+| `project`          | `string`  | ❌        | ``            | Name of the project to build the book for for multi-project repositories only. |
+| `publish-branch`   | `string`  | ❌        | `gh-pages`    | The branch to publish documenation to.                                         |
 
 ## Outputs
 
