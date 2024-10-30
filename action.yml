@@ -81,7 +81,7 @@ runs:
         echo "::endgroup::"
 
     - name: Test Book
-      if: inputs.enable-tests
+      if: ${{ inputs.enable-tests == 'true' || inputs.enable-tests == true }}
       shell: 'bash -ex {0}'
       working-directory: ${{ inputs.docs-dir }}
       run: |
