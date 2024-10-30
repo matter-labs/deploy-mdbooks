@@ -38,6 +38,11 @@ inputs:
     description: "Name of the project to deploy"
     required: false
     default: ""
+  deploy:
+    type: boolean
+    description: "Enable or disable the deployment"
+    required: false
+    default: true
 
 runs:
   using: composite
@@ -90,6 +95,7 @@ runs:
         echo "::endgroup::"
 
     - name: Init publishing branch
+      if: ${{ inputs.deploy == 'true' || inputs.deploy == true }}
       shell: 'bash -ex {0}'
       env:
         GH_TOKEN: ${{ inputs.github-token }}
@@ -110,6 +116,7 @@ runs:
         echo "::endgroup::"
 
     - name: Update versions file
+      if: ${{ inputs.deploy == 'true' || inputs.deploy == true }}
       shell: 'bash -ex {0}'
       env:
         VERSION: ${{ steps.build-book.outputs.version }}
@@ -141,6 +148,7 @@ runs:
         echo "::endgroup::"
 
     - name: Deploy book
+      if: ${{ inputs.deploy == 'true' || inputs.deploy == true }}
       shell: 'bash -ex {0}'
       env:
         VERSION: ${{ steps.build-book.outputs.version }}

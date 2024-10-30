@@ -116,6 +116,7 @@ jobs:
 | `enable-tests`     | `boolean` | ❌        | `true`        | Enable or disable `mdbook test`.                                               |
 | `project`          | `string`  | ❌        | ``            | Name of the project to build the book for for multi-project repositories only. |
 | `publish-branch`   | `string`  | ❌        | `gh-pages`    | The branch to publish documenation to.                                         |
+| `deploy`           | `boolean` | ❌        | `true`        | Enable or disable deployment. Can be used in testing purposes.                 |
 
 ## Outputs
 
