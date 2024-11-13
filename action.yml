@@ -43,6 +43,11 @@ inputs:
     description: "Enable or disable the deployment"
     required: false
     default: true
+  create-latest-symlink:
+    type: boolean
+    description: "Create a symlink to the latest version"
+    required: false
+    default: false
 
 runs:
   using: composite
@@ -162,6 +167,11 @@ runs:
         mv "${BOOK_DIR}" "${VERSION}"
         # Add the new version of the book
         git add "${VERSION}" versions.json
+        if [ ${{ inputs.create-latest-symlink }} == 'true' ]; then
+          rm -f latest
+          ln -sfn "${VERSION}" latest
+          git add latest
+        fi
         git commit --amend -m "Deploy ${GITHUB_SHA::7}"
         git push --force --set-upstream origin ${{ inputs.publish-branch }}
         echo "::endgroup::"
