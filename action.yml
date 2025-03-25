@@ -65,7 +65,6 @@ runs:
       env:
         MDBOOK_LATEST_API: "https://api.github.com/repos/rust-lang/mdbook/releases/${{ inputs.mdbook-version || 'latest' }}"
         MDBOOK_DOWNLOAD_URL: "https://github.com/rust-lang/mdbook/releases/download"
-        MDBOOK_MERMAID_DOWNLOAD_URL: "https://github.com/badboy/mdbook-mermaid/releases/download/v0.14.0/mdbook-mermaid-v0.14.0-x86_64-unknown-linux-musl.tar.gz"
       run: |
         echo "::group::Install mdbook"
         TAG=$(curl "${MDBOOK_LATEST_API}" | jq -r .tag_name)
@@ -73,8 +72,24 @@ runs:
         MDBOOK_INSTALL_DIR="${PWD}/.mdbook_$(date +%s)"
         mkdir -p "${MDBOOK_INSTALL_DIR}"
         curl -sSL "${URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
-        curl -sSL "${MDBOOK_MERMAID_DOWNLOAD_URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
+        echo "MDBOOK_INSTALL_DIR=${MDBOOK_INSTALL_DIR}" >> "${GITHUB_ENV}"
         echo "${MDBOOK_INSTALL_DIR}" >> "${GITHUB_PATH}"
+        echo "::endgroup::"
+
+    - name: Install mdbook addons
+      shell: 'bash -ex {0}'
+      env:
+        MDBOOK_MERMAID_DOWNLOAD_URL: "https://github.com/badboy/mdbook-mermaid/releases/download/v0.14.0/mdbook-mermaid-v0.14.0-x86_64-unknown-linux-musl.tar.gz"
+        MDBOOK_ADMONISH_DOWNLOAD_URL: "https://github.com/tommilligan/mdbook-admonish/releases/download/v1.19.0/mdbook-admonish-v1.19.0-x86_64-unknown-linux-musl.tar.gz"
+        MDBOOK_LINKCHECK_URL: "https://github.com/Michael-F-Bryan/mdbook-linkcheck/releases/download/v0.7.7/mdbook-linkcheck.x86_64-unknown-linux-gnu.zip"
+      run: |
+        echo "::group::Install mdbook addons"
+        curl -sSL "${MDBOOK_MERMAID_DOWNLOAD_URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
+        curl -sSL "${MDBOOK_ADMONISH_DOWNLOAD_URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
+        cd ${MDBOOK_INSTALL_DIR}
+        curl -sSL "${MDBOOK_LINKCHECK_URL}" -o mdbook-linkcheck.zip
+        unzip mdbook-linkcheck.zip
+        chmod +x mdbook-linkcheck
         echo "::endgroup::"
 
     - name: Build Book
@@ -89,6 +104,12 @@ runs:
           VERSION=${{ inputs.version }}
         fi
         mdbook build --dest-dir=${VERSION}
+        if [ -d "${VERSION}/html" ]; then
+          echo "Book is using multiple outputs."
+          echo "Copying the HTML output to the book root directory."
+          mv ./${VERSION}/html/* ./${VERSION}
+          mv ./${VERSION}/html/.[!.]* ./${VERSION}
+        fi
         echo version=${VERSION} >> "${GITHUB_OUTPUT}"
         echo "::endgroup::"
 
