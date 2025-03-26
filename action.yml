@@ -63,15 +63,12 @@ runs:
     - name: Install latest mdbook
       shell: 'bash -ex {0}'
       env:
-        MDBOOK_LATEST_API: "https://api.github.com/repos/rust-lang/mdbook/releases/${{ inputs.mdbook-version || 'latest' }}"
-        MDBOOK_DOWNLOAD_URL: "https://github.com/rust-lang/mdbook/releases/download"
+        MDBOOK_DOWNLOAD_URL: "https://github.com/rust-lang/mdBook/releases/download/v0.4.47/mdbook-v0.4.47-x86_64-unknown-linux-musl.tar.gz"
       run: |
         echo "::group::Install mdbook"
-        TAG=$(curl "${MDBOOK_LATEST_API}" | jq -r .tag_name)
-        URL="${MDBOOK_DOWNLOAD_URL}/${TAG}/mdbook-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
         MDBOOK_INSTALL_DIR="${PWD}/.mdbook_$(date +%s)"
         mkdir -p "${MDBOOK_INSTALL_DIR}"
-        curl -sSL "${URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
+        curl -sSL "${MDBOOK_DOWNLOAD_URL}" | tar -xz --directory="${MDBOOK_INSTALL_DIR}"
         echo "MDBOOK_INSTALL_DIR=${MDBOOK_INSTALL_DIR}" >> "${GITHUB_ENV}"
         echo "${MDBOOK_INSTALL_DIR}" >> "${GITHUB_PATH}"
         echo "::endgroup::"
