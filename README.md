@@ -16,6 +16,7 @@ This GitHub Action automates the process of building, testing, and deploying a v
 - **Automatic Deployment**: Automatically deploys your mdBook documentation to the `gh-pages` branch.
 - **Version Control**: Deploys different versions of your documentation based on the branch or custom input.
 - **Testing Support**: Optionally runs `mdbook test` before deploying to ensure the book is functional.
+- **Extra Published Assets**: Can copy a few additional generated paths, such as rustdoc output, into the same publish branch.
 - **Customizable**: Supports custom mdBook versions, output directories, and more.
 
 ## Example Workflow
@@ -46,6 +47,8 @@ jobs:
           version: ${{ inputs.version || github.ref_name }}
           docs-dir: ${{ inputs.docs-dir || 'docs' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          additional-paths: |
+            target/doc=api
 ```
 
 
@@ -103,6 +106,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           enable-tests: true
           mdbook-version: "v0.4.40"
+          additional-paths: |
+            target/doc=api
 ```
 
 ## Inputs
@@ -117,6 +122,8 @@ jobs:
 | `project`          | `string`  | ❌        | ``            | Name of the project to build the book for for multi-project repositories only. |
 | `publish-branch`   | `string`  | ❌        | `gh-pages`    | The branch to publish documenation to.                                         |
 | `deploy`           | `boolean` | ❌        | `true`        | Enable or disable deployment. Can be used in testing purposes.                 |
+| `create-latest-symlink` | `boolean` | ❌   | `false`       | Create a `latest` symlink that points to the deployed version.                 |
+| `additional-paths` | `string`  | ❌        | ``            | Newline-separated `source=destination` mappings copied into the publish branch. |
 
 ## Outputs
 
@@ -127,6 +134,8 @@ jobs:
 - Action is supported on Linux only.
 - If the `gh-pages` branch does not exist, it will be created automatically.
 - Make sure that GitHub Pages is set to deploy from the `gh-pages` branch in your repository settings.
+- `additional-paths` destinations are relative to the publish branch root and must stay inside it.
+- When a source mapping points to a directory, the action replaces the destination directory before copying the new contents.
 
 ## License
 

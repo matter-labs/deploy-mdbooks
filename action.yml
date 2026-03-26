@@ -48,6 +48,11 @@ inputs:
     description: "Create a symlink to the latest version"
     required: false
     default: false
+  additional-paths:
+    type: string
+    description: "Additional source=destination mappings to copy into the publish branch"
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -177,6 +182,7 @@ runs:
       shell: 'bash -ex {0}'
       env:
         VERSION: ${{ steps.build-book.outputs.version }}
+        ADDITIONAL_PATHS: ${{ inputs.additional-paths }}
       run: |
         echo "::group::Deploying the book"
         BOOK_DIR=$(readlink -f "${{ inputs.docs-dir }}/${VERSION}")
@@ -185,12 +191,57 @@ runs:
         rm -rf ${VERSION}
         # Move the new version of the book
         mv "${BOOK_DIR}" "${VERSION}"
-        # Add the new version of the book
-        git add "${VERSION}" versions.json
+        # Stage the new version of the book and the updated version selector.
+        git add -A -- "${VERSION}" versions.json
         if [ ${{ inputs.create-latest-symlink }} == 'true' ]; then
           rm -f latest
           ln -sfn "${VERSION}" latest
-          git add latest
+          git add -A -- latest
+        fi
+
+        # Some projects publish generated assets alongside the book, such as
+        # rustdoc output. These mappings let the action keep owning the pages
+        # branch while still updating a few extra directories in the same deploy.
+        if [ ! -z "${ADDITIONAL_PATHS}" ]; then
+          while IFS= read -r mapping; do
+            [ -z "${mapping}" ] && continue
+
+            if [[ "${mapping}" != *=* ]]; then
+              echo "::error title=⛔ invalid additional-paths entry::Expected source=destination, got '${mapping}'."
+              exit 1
+            fi
+
+            SOURCE_PATH="${mapping%%=*}"
+            DESTINATION_PATH="${mapping#*=}"
+
+            if [ -z "${SOURCE_PATH}" ] || [ -z "${DESTINATION_PATH}" ]; then
+              echo "::error title=⛔ invalid additional-paths entry::Both source and destination must be non-empty in '${mapping}'."
+              exit 1
+            fi
+
+            if [[ "${DESTINATION_PATH}" == /* ]] || [[ "${DESTINATION_PATH}" == ../* ]] || [[ "${DESTINATION_PATH}" == *"/../"* ]] || [[ "${DESTINATION_PATH}" == *"/.." ]]; then
+              echo "::error title=⛔ invalid additional-paths destination::Destination '${DESTINATION_PATH}' must stay inside the publish branch."
+              exit 1
+            fi
+
+            SOURCE_ABS_PATH=$(readlink -f "${SOURCE_PATH}")
+            if [ ! -e "${SOURCE_ABS_PATH}" ]; then
+              echo "::error title=⛔ missing additional-paths source::Source '${SOURCE_PATH}' does not exist."
+              exit 1
+            fi
+
+            rm -rf "${DESTINATION_PATH}"
+            mkdir -p "$(dirname "${DESTINATION_PATH}")"
+
+            if [ -d "${SOURCE_ABS_PATH}" ]; then
+              mkdir -p "${DESTINATION_PATH}"
+              cp -a "${SOURCE_ABS_PATH}/." "${DESTINATION_PATH}/"
+            else
+              cp -a "${SOURCE_ABS_PATH}" "${DESTINATION_PATH}"
+            fi
+
+            git add -A -- "${DESTINATION_PATH}"
+          done <<< "${ADDITIONAL_PATHS}"
         fi
         git commit --amend -m "Deploy ${GITHUB_SHA::7}"
         git push --force --set-upstream origin ${{ inputs.publish-branch }}
